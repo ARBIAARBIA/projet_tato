@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script src="{% static  'js\script.js' %}"></script>
+    <title>Interface de Surveillance</title>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <h1><i class="fas fa-shield-alt"></i> Système de Surveillance</h1>
+            <div class="header-controls">
+                <div class="status-indicator active">
+                    <span>ACTIF</span>
+                </div>
+                <div class="datetime">
+                    <span id="current-date"></span>
+                    <span id="current-time"></span>
+                </div>
+            </div>
+        </header>
+<body>
+        {% block content %}
+    {% endblock %}
+</body>
+        <footer class="footer">
+            <div class="system-info">
+                <span>Système de Surveillance v2.4.1</span>
+                <span>Dernière mise à jour: 12/04/2023</span>
+            </div>
+            <div class="quick-actions">
+                <button class="btn"><i class="fas fa-power-off"></i> Arrêt</button>
+                <button class="btn"><i class="fas fa-lock"></i> Verrouiller</button>
+                <button class="btn primary"><i class="fas fa-save"></i> Sauvegarder</button>
+            </div>
+        </footer>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,151 @@
+{% extends "base.html" %} 
+{% load static %}
+{% block content %}
+
+
+<div class="main-content">
+    <div class="camera-grid">
+        <!-- Caméra principale -->
+        <div class="camera-view">
+            <div class="camera-header">
+              <span>IT departement</span>
+          </div>
+          <div class="camera-feed">
+            <img id="webcam-feed" src="{% url 'webcam_stream' %}" alt="Webcam Feed">
+
+          </div>
+        </div>
+        <div class="camera-view">
+          <div class="camera-header">
+            <span>HR departement</span>
+        </div>
+        <div class="camera-feed">
+          <img id="webcam-feed" src="{% url 'webcam_stream' %}" alt="Webcam Feed">
+
+        </div>
+      </div>
+
+        <!-- Caméras secondaires -->
+        <div class="camera-view">
+            <div class="camera-header">
+                <span>Entrée Principale</span>
+            </div>
+            <div class="camera-feed">
+              <img id="webcam-feed" src="{% url 'webcam_stream' %}" alt="Webcam Feed">
+              <div class="overlay">
+                    <div class="timestamp">12:45:23</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="camera-view">
+            <div class="camera-header">
+                <span>Media departement</span>
+            </div>
+            <div class="camera-feed">
+              <img id="webcam-feed" src="{% url 'webcam_stream' %}" alt="Webcam Feed">
+              <div class="overlay">
+                    <div class="timestamp">12:45:23</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="camera-view">
+            <div class="camera-header">
+                <span>Finance departement</span>
+            </div>
+            <div class="camera-feed">
+              <img id="webcam-feed" src="{% url 'webcam_stream' %}" alt="Webcam Feed">
+              <div class="overlay">
+                    <div class="timestamp">12:45:23</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="camera-view">
+            <div class="camera-header">
+                <span>Legal departement</span>
+            </div>
+            <div class="camera-feed">
+              <img id="webcam-feed" src="{% url 'webcam_stream' %}" alt="Webcam Feed">
+              <div class="overlay">
+                    <div class="timestamp">12:45:23</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls-panel">
+        <div class="control-section">
+            <h3><i class="fas fa-sliders-h"></i> Contrôles</h3>
+            <div class="control-group">
+                <label>Mode de Surveillance</label>
+                <select id="surveillance-mode" onchange="updateCameraMode(this.value)">
+                    <option value="normal">Normal</option>
+                    <option value="high-alert">Haute Alerte</option>
+                    <option value="night">Nuit</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Enregistrement</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="recording-toggle" checked>
+                    <label for="recording-toggle"></label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Détection de Mouvement</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="motion-toggle" checked>
+                    <label for="motion-toggle"></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3><i class="fas fa-bell"></i> Alertes Récentes</h3>
+            <div class="alerts-list">
+                <div class="alert-item new">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div class="alert-info">
+                        <span>Mouvement détecté - Parking</span>
+                        <small>Il y a 2 minutes</small>
+                    </div>
+                </div>
+                <div class="alert-item">
+                    <i class="fas fa-door-open"></i>
+                    <div class="alert-info">
+                        <span>Porte ouverte - Entrée Principale</span>
+                        <small>Il y a 15          minutes</small>
+                    </div>
+                </div>
+                <div class="alert-item">
+                    <i class="fas fa-video"></i>
+                    <div class="alert-info">
+                        <span>Caméra réactivée - Couloir</span>
+                        <small>Il y a 32 minutes</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3><i class="fas fa-history"></i> Historique</h3>
+            <div class="history-controls">
+                <input type="date" id="history-date">
+                <select id="history-camera">
+                    <option value="all">Toutes les caméras</option>
+                    <option value="main">Caméra Principale</option>
+                    <option value="entrance">Entrée Principale</option>
+                    <option value="parking">Parking</option>
+                    <option value="hallway">Couloir</option>
+                    <option value="back">Arrière</option>
+                </select>
+                <button class="btn" id="view-history">
+                    <i class="fas fa-search"></i> Voir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
