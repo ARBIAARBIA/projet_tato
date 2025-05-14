@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Reconnaissance Faciale en Temps Réel{% endblock %}
+
+{% block content %}
+<div class="recognition-container">
+    <h1><i class="fas fa-user-shield"></i> Reconnaissance Faciale</h1>
+    
+    <div class="recognition-status">
+        <div class="status-indicator" id="status-indicator">
+            <i class="fas fa-circle"></i>
+            <span id="status-text">Initialisation...</span>
+        </div>
+        <div class="confidence-meter">
+            <div class="confidence-bar" id="confidence-bar"></div>
+            <span id="confidence-value">0%</span>
+        </div>
+    </div>
+
+    <div class="video-container">
+        <video id="video-feed" autoplay playsinline></video>
+        <canvas id="face-canvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="recognition-result" id="recognition-result">
+        <div class="result-header">
+            <i class="fas fa-id-card"></i>
+            <h2>Résultat</h2>
+        </div>
+        <div class="result-content">
+            <div class="identity">
+                <span class="label">Identité:</span>
+                <span class="value" id="identity-value">Inconnu</span>
+            </div>
+            <div class="confidence">
+                <span class="label">Confiance:</span>
+                <span class="value" id="confidence-value-display">0%</span>
+            </div>
+            <div class="access-info">
+                <span class="label">Accès:</span>
+                <span class="value" id="access-value">En attente...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="start-btn" class="btn primary">
+            <i class="fas fa-play"></i> Démarrer
+        </button>
+        <button id="stop-btn" class="btn danger" disabled>
+            <i class="fas fa-stop"></i> Arrêter
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+
+
+{% block javascript %}
+<script src="{% static 'js/script.js' %}"></script>
+<script>
+    const CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+{% endblock %}

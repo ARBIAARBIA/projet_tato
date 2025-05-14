@@ -231,3 +231,390 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1500);
     });
 });
+document.addEventListener('DOMContentLoaded', () => {
+    const video = document.getElementById('webcam-preview');
+    const captureBtn = document.getElementById('start-enrollment-btn');
+    const statusMessage = document.getElementById('status-message');
+    const progressBar = document.getElementById('capture-progress-bar');
+    const captureCount = document.getElementById('capture-count');
+    
+    let stream = null;
+    let captureInterval = null;
+    let imagesCaptured = 0;
+    const totalImages = 20;
+    
+    // Start webcam
+    async function startWebcam() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.addEventListener('loadedmetadata', () => {
+    captureBtn.disabled = false;
+});
+
+        } catch (err) {
+            showError('Could not access webcam: ' + err.message);
+        }
+    }
+    
+    // Capture image
+    async function captureImage() {
+        if (imagesCaptured >= totalImages) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        const imageData = canvas.toDataURL('image/jpeg');
+        const blob = await (await fetch(imageData)).blob();
+        
+        const formData = new FormData();
+        formData.append('username', document.getElementById('username').value);
+        formData.append('image', blob, 'capture.jpg');
+        
+        try {
+            const response = await fetch('/api/enroll/', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                imagesCaptured++;
+                updateProgress();
+                
+                if (imagesCaptured >= totalImages) {
+                    completeEnrollment();
+                }
+            } else {
+                showError(data.message);
+            }
+        } catch (err) {
+            showError('Capture failed: ' + err.message);
+        }
+    }
+    
+    // Update progress
+    function updateProgress() {
+        progressBar.value = imagesCaptured;
+        captureCount.textContent = `${imagesCaptured}/${totalImages}`;
+    }
+    
+    // Complete enrollment
+    function completeEnrollment() {
+        clearInterval(captureInterval);
+        statusMessage.textContent = 'Enrollment complete! Training model...';
+        statusMessage.classList.add('status-success');
+        
+        // Call retraining endpoint
+        fetch('/api/retrain/', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                statusMessage.textContent = 'Enrollment and training completed successfully!';
+            } else {
+                showError('Training failed: ' + data.message);
+            }
+        })
+        .catch(err => {
+            showError('Training request failed: ' + err.message);
+        });
+    }
+    
+    // Show error
+    function showError(message) {
+        statusMessage.textContent = message;
+        statusMessage.classList.add('status-error');
+        clearInterval(captureInterval);
+        captureBtn.disabled = false;
+    }
+    
+    // Start enrollment
+    captureBtn.addEventListener('click', () => {
+        if (!stream) {
+            showError('Webcam not ready');
+            return;
+        }
+        
+        captureBtn.disabled = true;
+        imagesCaptured = 0;
+        updateProgress();
+        
+        statusMessage.textContent = 'Starting enrollment...';
+        statusMessage.classList.remove('status-error', 'status-success');
+        
+        // Capture every 500ms until we have enough images
+        captureInterval = setInterval(captureImage, 500);
+    });
+    
+    // Initialize
+    startWebcam();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const video = document.getElementById('video-feed');
+    const canvas = document.getElementById('face-canvas');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const confidenceBar = document.getElementById('confidence-bar');
+    const confidenceValue = document.getElementById('confidence-value');
+    const identityValue = document.getElementById('identity-value');
+    const confidenceDisplay = document.getElementById('confidence-value-display');
+    const accessValue = document.getElementById('access-value');
+    
+    // Variables
+    let stream = null;
+    let recognitionInterval = null;
+    let faceBox = null;
+    let faceLabel = null;
+    
+    // Send captured frame to server for recognition
+    async function sendFrameForRecognition(blob) {
+        const formData = new FormData();
+        formData.append('frame', blob);
+        
+        try {
+            const response = await fetch('/recognize/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Recognition error:', error);
+            return {
+                error: error.message,
+                face_detected: false
+            };
+        }
+    }
+    
+    // Create face detection elements
+    function createDetectionElements() {
+        // Only create if they don't already exist
+        if (!faceBox) {
+            faceBox = document.createElement('div');
+            faceBox.className = 'face-box';
+            document.querySelector('.video-container').appendChild(faceBox);
+        }
+        
+        if (!faceLabel) {
+            faceLabel = document.createElement('div');
+            faceLabel.className = 'face-label';
+            document.querySelector('.video-container').appendChild(faceLabel);
+        }
+    }
+    
+    // Update face detection box
+    function updateFaceBox(x, y, width, height, label, confidence, isRecognized) {
+        const videoContainer = document.querySelector('.video-container');
+        
+        faceBox.style.display = 'block';
+        faceBox.style.left = `${x}px`;
+        faceBox.style.top = `${y}px`;
+        faceBox.style.width = `${width}px`;
+        faceBox.style.height = `${height}px`;
+        faceBox.className = isRecognized ? 'face-box recognized' : 'face-box unknown';
+        
+        faceLabel.style.display = 'block';
+        faceLabel.style.left = `${x}px`;
+        faceLabel.style.top = `${y + height}px`;
+        faceLabel.textContent = `${label} (${Math.round(confidence * 100)}%)`;
+        faceLabel.className = isRecognized ? 'face-label recognized' : 'face-label unknown';
+    }
+    
+    // Hide face detection elements
+    function hideDetectionElements() {
+        if (faceBox) faceBox.style.display = 'none';
+        if (faceLabel) faceLabel.style.display = 'none';
+    }
+    
+    // Start video stream
+    async function startVideoStream() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: 'user' 
+                } 
+            });
+            video.srcObject = stream;
+            
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusIndicator.className = 'status-indicator active';
+            statusText.textContent = 'Reconnaissance active';
+            
+            createDetectionElements();
+            startRecognition();
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            statusIndicator.className = 'status-indicator error';
+            statusText.textContent = 'Erreur de caméra';
+        }
+    }
+    
+    // Stop video stream
+    function stopVideoStream() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        if (recognitionInterval) {
+            clearInterval(recognitionInterval);
+            recognitionInterval = null;
+        }
+        
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        statusIndicator.className = 'status-indicator inactive';
+        statusText.textContent = 'En veille';
+        
+        hideDetectionElements();
+        resetResults();
+    }
+    
+    // Reset result displays
+    function resetResults() {
+        confidenceBar.style.width = '0%';
+        confidenceValue.textContent = '0%';
+        confidenceDisplay.textContent = '0%';
+        identityValue.textContent = 'Inconnu';
+        accessValue.textContent = 'En attente...';
+        accessValue.className = 'value';
+    }
+    
+    // Start face recognition
+    function startRecognition() {
+        recognitionInterval = setInterval(async () => {
+            if (!stream) return;
+            
+            try {
+                // Capture frame from video
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Convert to blob and send to server
+                canvas.toBlob(async (blob) => {
+                    const result = await sendFrameForRecognition(blob);
+                    updateRecognitionResult(result);
+                }, 'image/jpeg', 0.8);
+            } catch (error) {
+                console.error('Frame processing error:', error);
+            }
+        }, 500); // Process every 500ms - adjust for performance
+    }
+    
+    // Update UI with recognition results
+    function updateRecognitionResult(result) {
+        if (result.error) {
+            statusIndicator.className = 'status-indicator error';
+            statusText.textContent = 'Erreur de reconnaissance';
+            hideDetectionElements();
+            return;
+        }
+
+        const confidence = result.confidence || 0;
+        const confidencePercent = Math.round(confidence * 100);
+        
+        // Update confidence indicators
+        confidenceBar.style.width = `${confidencePercent}%`;
+        confidenceValue.textContent = `${confidencePercent}%`;
+        confidenceDisplay.textContent = `${confidencePercent}%`;
+        
+        // Color coding based on confidence
+        if (confidence < 0.3) {
+            confidenceBar.className = 'confidence-bar low';
+        } else if (confidence < 0.6) {
+            confidenceBar.className = 'confidence-bar medium';
+        } else {
+            confidenceBar.className = 'confidence-bar high';
+        }
+        
+        // Update identity and access status
+        identityValue.textContent = result.identity || 'Inconnu';
+        accessValue.textContent = result.access || 'Accès non déterminé';
+        
+        // Set access status styling
+        if (result.access === "Accès autorisé") {
+            accessValue.className = 'value access-granted';
+        } else if (result.access === "Accès refusé") {
+            accessValue.className = 'value access-denied';
+        } else {
+            accessValue.className = 'value';
+        }
+        
+        // Update face detection box if face detected
+        if (result.face_detected) {
+            // Calculate relative coordinates for the video container
+            const videoContainer = document.querySelector('.video-container');
+            const videoRect = videoContainer.getBoundingClientRect();
+            const scaleX = videoRect.width / video.videoWidth;
+            const scaleY = videoRect.height / video.videoHeight;
+            
+            updateFaceBox(
+                result.face_x * scaleX,
+                result.face_y * scaleY,
+                result.face_width * scaleX,
+                result.face_height * scaleY,
+                result.identity || 'Inconnu',
+                confidence,
+                confidence > 0.3
+            );
+            
+            // Update status indicator
+            statusIndicator.className = 'status-indicator active';
+            statusText.textContent = confidence > 0.3 ? 'Visage reconnu' : 'Visage non reconnu';
+        } else {
+            hideDetectionElements();
+            statusIndicator.className = 'status-indicator scanning';
+            statusText.textContent = 'Recherche de visage...';
+        }
+    }
+    
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Event listeners
+    startBtn.addEventListener('click', startVideoStream);
+    stopBtn.addEventListener('click', stopVideoStream);
+    
+    // Clean up on page exit
+    window.addEventListener('beforeunload', stopVideoStream);
+    
+    // Initialize UI state
+    statusIndicator.className = 'status-indicator inactive';
+    statusText.textContent = 'En veille';
+    resetResults();
+});

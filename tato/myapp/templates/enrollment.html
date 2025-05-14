@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Enrôlement Biométrique RGPD{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <h1>Enrôlement Biométrique RGPD</h1>
+    
+    <form method="post" id="enrollment-form">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="username">Nom d'Utilisateur</label>
+            <input type="text" id="username" name="username" required 
+                   placeholder="Entrez votre nom ou identifiant">
+        </div>
+
+        <div class="access-section">
+            <h3>Accès aux Départements</h3>
+            <p>Sélectionnez les zones auxquelles vous avez besoin d'accéder :</p>
+            
+            <div class="access-options">
+                {% for access in access_options %}
+                <div class="access-checkbox">
+                    <input type="checkbox" id="access-{{ access.value }}" name="access" value="{{ access.value }}">
+                    <label for="access-{{ access.value }}">{{ access.label }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="consent-section">
+            <h3>Formulaire de Consentement RGPD</h3>
+            <p>Je consens à la collecte et au traitement de mes données biométriques :</p>
+            
+            {% for consent in consent_options %}
+            <div class="consent-checkbox">
+                <input type="checkbox" id="consent-{{ consent.value }}" name="consent" value="{{ consent.value }}" required>
+                <label for="consent-{{ consent.value }}">{{ consent.label }}</label>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="webcam-container">
+            <video id="webcam-preview" autoplay playsinline></video>
+            <div class="webcam-label">Aperçu de la webcam</div>
+        </div>
+
+        <div id="capture-progress">
+            <progress id="capture-progress-bar" value="0" max="20"></progress>
+            <span id="capture-count">0/20 images capturées</span>
+        </div>
+
+        <button type="button" id="start-enrollment-btn" class="btn primary" disabled><i class="fas fa-save"></i> 
+            Commencer l'Enrôlement
+        </button>
+
+        <div id="status-message" class="status-message"></div>
+    </form>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{% static  'js\script.js' %}"></script>
+ <script>   
+    const ENROLLMENT_URL = "{% url 'enroll' %}";
+    const CSRF_TOKEN = "{{ csrf_token }}";
+    console.log("URL générée:", "{% url 'enroll' %}");
+</script>
+{% endblock %}

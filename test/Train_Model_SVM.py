@@ -1,36 +1,20 @@
+
 # -*- coding: utf-8 -*-
 """
-Script de réentraînement automatique du modèle de reconnaissance faciale
-"""
+Created on Mon Mar 17 14:10:56 2025
 
+@author: PC
+"""
 import os
 import cv2
 import numpy as np
-import joblib
+import joblib  # Pour sauvegarder et charger le modèle
 from skimage.feature import hog
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-
-# === Fonctions ===
-
-def detect_face(image):
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    faces = face_cascade.detectMultiScale(image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-    if len(faces) > 0:
-        (x, y, w, h) = faces[0]
-        return image[y:y+h, x:x+w], (x, y, w, h)
-    return None, None
-
-def preprocess(face):
-    face = cv2.resize(face, (64, 64))
-    face = cv2.equalizeHist(face)
-    return face / 255.0
-
-def extract_hog_features(image):
-    return hog(image, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), feature_vector=True)
 
 def load_images_and_labels(data_dir):
     valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff')
@@ -40,7 +24,7 @@ def load_images_and_labels(data_dir):
     label_count = 0
 
     if not os.path.isdir(data_dir):
-        print(f"Erreur : le dossier '{data_dir}' est introuvable.")
+        print(f"Erreur: Le répertoire '{data_dir}' n'existe pas.")
         return np.array([]), np.array([]), {}
 
     for subject in os.listdir(data_dir):
@@ -64,39 +48,43 @@ def load_images_and_labels(data_dir):
 
     return np.array(features), np.array(labels), label_dict
 
-# === Entraînement ===
+def detect_face(image):
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    faces = face_cascade.detectMultiScale(image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    if len(faces) > 0:
+        (x, y, w, h) = faces[0]
+        return image[y:y+h, x:x+w], (x, y, w, h)
+    return None, None
+
+def preprocess(face):
+    face = cv2.resize(face, (64, 64))
+    face = cv2.equalizeHist(face)
+    return face / 255.0
+
+def extract_hog_features(image):
+    return hog(image, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), feature_vector=True)
 
 if __name__ == "__main__":
     data_dir = r"./dataset"
     data, labels, label_dict = load_images_and_labels(data_dir)
-
+    
     if data.size == 0 or labels.size == 0:
-        print("Erreur : aucune donnée à entraîner. Vérifie le dataset.")
+        print("Aucune donnée chargée. Vérifiez votre dataset.")
         exit(1)
 
     X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, random_state=42)
-
     pipeline = make_pipeline(StandardScaler(), SVC(probability=True))
-
-    param_grid = {
-        'svc__C': [0.1, 1, 10],
-        'svc__kernel': ['linear', 'rbf'],
-        'svc__gamma': ['scale', 'auto']
-    }
-
+    param_grid = {'svc__C': [0.1, 1, 10, 100], 'svc__kernel': ['linear', 'rbf'], 'svc__gamma': ['scale', 'auto']}
     grid = GridSearchCV(pipeline, param_grid, cv=5, scoring='accuracy', verbose=1)
     grid.fit(X_train, y_train)
-
+    
     best_model = grid.best_estimator_
-
-    print(f"✅ Meilleurs paramètres : {grid.best_params_}")
+    print(f"Meilleurs paramètres : {grid.best_params_}")
     y_pred = best_model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
-    print(f"📊 Précision du modèle sur test : {accuracy * 100:.2f}%")
-
-    joblib.dump(X_test, "X_test.pkl")
-    joblib.dump(y_test, "y_test.pkl")
+    print(f"Précision du modèle sur test: {accuracy * 100:.2f}%")
+    joblib.dump(X_test,"X_test.pkl")
+    joblib.dump(y_test,"y_test.pkl")
     joblib.dump(best_model, "face_recognition_model.pkl")
     joblib.dump(label_dict, "label_dict.pkl")
-
-    print("✅ Modèle et données sauvegardés avec succès.")
+    print("Modèle, labels, et variables sauvegardés avec succès.")
